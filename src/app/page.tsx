@@ -296,6 +296,7 @@ export default function Home() {
   const [printMode, setPrintMode] = useState<PrintMode>("complete");
   const [activeTab, setActiveTab] = useState<"bibliotheque" | "generer" | "pratiquer" | "suivi">("bibliotheque");
   const [studentMode, setStudentMode] = useState(false);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const importInputRef = useRef<HTMLInputElement | null>(null);
   const resultRef = useRef<HTMLDivElement | null>(null);
 
@@ -457,6 +458,7 @@ export default function Home() {
       setRequiredWordsText(payload.requiredWords.join(", "));
       setErrorsText(payload.errorsToReview?.join(", ") || "");
       setObservedErrorsText("");
+      setElapsedSeconds(0);
       setResult(data);
       setCurrentHistoryId(item.id);
       setHistory((current) => [item, ...current].slice(0, 30));
@@ -632,6 +634,7 @@ export default function Home() {
               ...item,
               observedErrors,
               reviewStatus: observedErrors.length ? "a-revoir" : "faite",
+              ...(elapsedSeconds > 0 ? { duration: elapsedSeconds } : {}),
             }
           : item
       )
@@ -651,6 +654,7 @@ export default function Home() {
     setRequiredWordsText(item.input.requiredWords.join(", "));
     setErrorsText(item.input.errorsToReview?.join(", ") || "");
     setObservedErrorsText(item.observedErrors?.join("\n") || "");
+    setElapsedSeconds(0);
     setResult(item.result);
     setCurrentHistoryId(item.id);
     setCopied(false);
@@ -1007,6 +1011,7 @@ export default function Home() {
                 printMode={printMode}
                 setPrintMode={setPrintMode}
                 studentMode={studentMode}
+                onTimerUpdate={setElapsedSeconds}
               />
             )}
           </div>
@@ -1740,6 +1745,7 @@ function ResultPanel({
   printMode,
   setPrintMode,
   studentMode = false,
+  onTimerUpdate,
 }: {
   result: DictationResult;
   observedErrorsText: string;
@@ -1755,7 +1761,28 @@ function ResultPanel({
   printMode: PrintMode;
   setPrintMode: (value: PrintMode) => void;
   studentMode?: boolean;
+  onTimerUpdate?: (seconds: number) => void;
 }) {
+  const [timerSeconds, setTimerSeconds] = useState(0);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    setTimerSeconds(0);
+    onTimerUpdate?.(0);
+    if (studentMode) {
+      timerRef.current = setInterval(() => {
+        setTimerSeconds((s) => s + 1);
+      }, 1000);
+    }
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [studentMode]);
+
+  useEffect(() => {
+    onTimerUpdate?.(timerSeconds);
+  }, [timerSeconds]);
+
   return (
     <div className="print-sheet space-y-6" data-print-mode={printMode}>
       <Card>

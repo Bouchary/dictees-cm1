@@ -73,6 +73,7 @@ export type HistoryItem = {
   reviewStatus?: ReviewStatus;
   reviewOfId?: string;
   schoolDictationId?: string;
+  duration?: number;
 };
 
 export type SchoolDictation = {
