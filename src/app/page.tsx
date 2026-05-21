@@ -1,6 +1,17 @@
 "use client";
 
 import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import {
   AlertTriangle,
   BookOpen,
   Brain,
@@ -27,6 +38,7 @@ import {
 } from "lucide-react";
 import type { ChangeEvent, ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { DictationPlayer } from "@/components/dictation-player";
 import { SpeechTextarea } from "@/components/speech-textarea";
 import {
   AppBackup,
@@ -68,11 +80,13 @@ const tenseOptions: { value: Tense; label: string }[] = [
   { value: "mixte", label: "Mixte" },
 ];
 
-const difficultyOptions: { value: Difficulty; label: string }[] = [
-  { value: "facile", label: "Facile" },
-  { value: "standard", label: "Standard CM1" },
-  { value: "avancee", label: "Plus difficile" },
-];
+function getDifficultyOptions(level: string): { value: Difficulty; label: string }[] {
+  return [
+    { value: "facile", label: "Facile" },
+    { value: "standard", label: `Standard ${level}` },
+    { value: "avancee", label: "Plus difficile" },
+  ];
+}
 
 const lengthOptions: { value: Length; label: string }[] = [
   { value: "courte", label: "Courte" },
@@ -950,6 +964,7 @@ export default function Home() {
               onReview={generateReviewFromSchool}
               onDelete={deleteSchoolDictation}
               isLoading={isLoading}
+              level={input.level}
             />
           </div>
         )}
@@ -1006,6 +1021,7 @@ export default function Home() {
               isLoading={isLoading}
               onGenerateCategoryReview={generateCategoryReview}
               onGeneratePriorityReview={generatePriorityReview}
+              history={history}
             />
 
             <HistoryPanel
@@ -1179,7 +1195,7 @@ function GenerationPanel({
           <SelectField
             label="Difficulté"
             value={input.difficulty}
-            options={difficultyOptions}
+            options={getDifficultyOptions(input.level)}
             onChange={(value) =>
               setInput((current) => ({
                 ...current,
@@ -1264,6 +1280,7 @@ function SchoolLibraryPanel({
   onReview,
   onDelete,
   isLoading,
+  level,
 }: {
   schoolForm: Omit<SchoolDictation, "id" | "createdAt">;
   setSchoolForm: (
@@ -1279,6 +1296,7 @@ function SchoolLibraryPanel({
   onReview: (item: SchoolDictation) => void;
   onDelete: (id: string) => void;
   isLoading: boolean;
+  level: string;
 }) {
   return (
     <Card>
@@ -1367,7 +1385,7 @@ function SchoolLibraryPanel({
           <SelectField
             label="Difficulté"
             value={schoolForm.difficulty}
-            options={difficultyOptions}
+            options={getDifficultyOptions(level)}
             onChange={(value) =>
               setSchoolForm((current) => ({
                 ...current,
@@ -1466,6 +1484,7 @@ function ErrorTrackingPanel({
   isLoading,
   onGenerateCategoryReview,
   onGeneratePriorityReview,
+  history,
 }: {
   stats: ErrorStat[];
   total: number;
@@ -1473,6 +1492,7 @@ function ErrorTrackingPanel({
   isLoading: boolean;
   onGenerateCategoryReview: (stat: ErrorStat) => void;
   onGeneratePriorityReview: () => void;
+  history: HistoryItem[];
 }) {
   return (
     <Card>
@@ -1564,6 +1584,64 @@ function ErrorTrackingPanel({
               );
             })}
           </div>
+
+          {stats.length > 0 && (
+            <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                Erreurs par catégorie
+              </p>
+              <ResponsiveContainer width="100%" height={stats.length * 42 + 16}>
+                <BarChart
+                  data={stats.map((s) => ({ name: s.label, count: s.count }))}
+                  layout="vertical"
+                  margin={{ top: 0, right: 12, left: 0, bottom: 0 }}
+                >
+                  <CartesianGrid horizontal={false} stroke="rgba(255,255,255,0.06)" />
+                  <XAxis type="number" tick={{ fill: "#94a3b8", fontSize: 11 }} axisLine={false} tickLine={false} />
+                  <YAxis type="category" dataKey="name" width={140} tick={{ fill: "#cbd5e1", fontSize: 12 }} axisLine={false} tickLine={false} />
+                  <Tooltip
+                    contentStyle={{ background: "#0f172a", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12 }}
+                    labelStyle={{ color: "#f8fafc" }}
+                    itemStyle={{ color: "#fcd34d" }}
+                    formatter={(v) => [`${v} occurrence(s)`, ""]}
+                  />
+                  <Bar dataKey="count" fill="#fcd34d" radius={[0, 6, 6, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+
+          {history.length >= 2 && (
+            <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                Progression (erreurs par dictée)
+              </p>
+              <ResponsiveContainer width="100%" height={180}>
+                <LineChart
+                  data={[...history]
+                    .reverse()
+                    .slice(-10)
+                    .map((item) => ({
+                      date: new Date(item.createdAt).toLocaleDateString("fr-FR", { day: "numeric", month: "short" }),
+                      erreurs: item.observedErrors?.length ?? 0,
+                    }))}
+                  margin={{ top: 8, right: 12, left: -20, bottom: 0 }}
+                >
+                  <CartesianGrid stroke="rgba(255,255,255,0.06)" />
+                  <XAxis dataKey="date" tick={{ fill: "#94a3b8", fontSize: 11 }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fill: "#94a3b8", fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                  <Tooltip
+                    contentStyle={{ background: "#0f172a", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12 }}
+                    labelStyle={{ color: "#f8fafc" }}
+                    itemStyle={{ color: "#fcd34d" }}
+                    formatter={(v) => [`${v} erreur(s)`, ""]}
+                  />
+                  <Line type="monotone" dataKey="erreurs" stroke="#fcd34d" strokeWidth={2} dot={{ fill: "#fcd34d", r: 3 }} activeDot={{ r: 5 }} />
+                </LineChart>
+              </ResponsiveContainer>
+              <p className="mt-2 text-xs text-slate-500">Une courbe descendante = des progrès !</p>
+            </div>
+          )}
         </div>
       )}
     </Card>
@@ -1735,17 +1813,17 @@ function ResultPanel({
         </div>
 
         {studentMode ? (
-          <Section title="Écris la dictée ici" icon={<PencilLine size={18} />}>
-            <textarea
-              value={observedErrorsText}
-              onChange={(e) => setObservedErrorsText(e.target.value)}
-              placeholder="Écris la dictée ici au fur et à mesure que tu l’entends..."
-              className="input min-h-48 resize-y text-lg leading-8"
-            />
-            <p className="mt-2 text-xs text-slate-500">
-              Demande à un adulte de te lire le texte de la dictée.
-            </p>
-          </Section>
+          <>
+            <DictationPlayer dictation={result.dictation} />
+            <Section title="Écris la dictée ici" icon={<PencilLine size={18} />}>
+              <textarea
+                value={observedErrorsText}
+                onChange={(e) => setObservedErrorsText(e.target.value)}
+                placeholder="Écris la dictée ici au fur et à mesure que tu l’entends..."
+                className="input min-h-48 resize-y text-lg leading-8"
+              />
+            </Section>
+          </>
         ) : (
           <>
             <section className="print-parent print-complete">
