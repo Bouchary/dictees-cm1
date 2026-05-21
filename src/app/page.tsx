@@ -539,7 +539,7 @@ export default function Home() {
 
     const payload: GenerateDictationInput = {
       mode: "words",
-      level: "CM1",
+      level: input.level,
       sourceDictation: "",
       requiredWords: uniqueList([
         ...parseList(requiredWordsText),
@@ -577,7 +577,7 @@ export default function Home() {
 
     const payload: GenerateDictationInput = {
       mode: "words",
-      level: "CM1",
+      level: input.level,
       sourceDictation: "",
       requiredWords: uniqueList([
         ...parseList(requiredWordsText),
@@ -686,7 +686,7 @@ export default function Home() {
   function loadSchoolDictation(item: SchoolDictation) {
     const payload: GenerateDictationInput = {
       mode: "source",
-      level: "CM1",
+      level: input.level,
       sourceDictation: item.sourceText,
       requiredWords: item.words,
       errorsToReview: parseList(item.notes),
@@ -709,7 +709,7 @@ export default function Home() {
   async function generateVariantFromSchool(item: SchoolDictation) {
     const payload: GenerateDictationInput = {
       mode: "source",
-      level: "CM1",
+      level: input.level,
       sourceDictation: item.sourceText,
       requiredWords: item.words,
       errorsToReview: parseList(item.notes),
@@ -726,7 +726,7 @@ export default function Home() {
   async function generateReviewFromSchool(item: SchoolDictation) {
     const payload: GenerateDictationInput = {
       mode: "words",
-      level: "CM1",
+      level: input.level,
       sourceDictation: "",
       requiredWords: item.words,
       errorsToReview: uniqueList([
