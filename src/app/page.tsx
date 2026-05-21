@@ -299,6 +299,7 @@ export default function Home() {
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const importInputRef = useRef<HTMLInputElement | null>(null);
   const resultRef = useRef<HTMLDivElement | null>(null);
+  const skipFirstSave = useRef(true);
 
   useEffect(() => {
     const rawHistory = localStorage.getItem(HISTORY_STORAGE_KEY);
@@ -322,12 +323,13 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    if (skipFirstSave.current) {
+      skipFirstSave.current = false;
+      return;
+    }
     localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(history));
-  }, [history]);
-
-  useEffect(() => {
     localStorage.setItem(SCHOOL_STORAGE_KEY, JSON.stringify(schoolDictations));
-  }, [schoolDictations]);
+  }, [history, schoolDictations]);
 
   const errorStats = useMemo(() => {
     const stats = new Map<ErrorCategory, ErrorStat>();
