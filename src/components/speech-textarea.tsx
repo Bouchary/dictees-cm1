@@ -48,6 +48,7 @@ type SpeechTextareaProps = {
   className?: string;
   separator?: string;
   helpText?: string;
+  dictLabel?: string;
 };
 
 function appendText(current: string, addition: string, separator: string) {
@@ -79,6 +80,7 @@ export function SpeechTextarea({
   className,
   separator = " ",
   helpText,
+  dictLabel = "Dicter",
 }: SpeechTextareaProps) {
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
   const latestValueRef = useRef(value);
@@ -198,7 +200,7 @@ export function SpeechTextarea({
           ) : (
             <>
               <Mic size={16} />
-              Dicter
+              {dictLabel}
             </>
           )}
         </button>

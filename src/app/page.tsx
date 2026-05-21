@@ -53,6 +53,13 @@ const grammarOptions: { value: GrammarFocus; label: string }[] = [
   { value: "mots-invariables", label: "Mots invariables" },
 ];
 
+const levelOptions: { value: "CE1" | "CE2" | "CM1" | "CM2"; label: string }[] = [
+  { value: "CE1", label: "CE1" },
+  { value: "CE2", label: "CE2" },
+  { value: "CM1", label: "CM1" },
+  { value: "CM2", label: "CM2" },
+];
+
 const tenseOptions: { value: Tense; label: string }[] = [
   { value: "present", label: "Présent" },
   { value: "imparfait", label: "Imparfait" },
@@ -273,7 +280,10 @@ export default function Home() {
   const [saveMessage, setSaveMessage] = useState("");
   const [dataMessage, setDataMessage] = useState("");
   const [printMode, setPrintMode] = useState<PrintMode>("complete");
+  const [activeTab, setActiveTab] = useState<"bibliotheque" | "generer" | "pratiquer" | "suivi">("bibliotheque");
+  const [studentMode, setStudentMode] = useState(false);
   const importInputRef = useRef<HTMLInputElement | null>(null);
+  const resultRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const rawHistory = localStorage.getItem(HISTORY_STORAGE_KEY);
@@ -436,6 +446,8 @@ export default function Home() {
       setResult(data);
       setCurrentHistoryId(item.id);
       setHistory((current) => [item, ...current].slice(0, 30));
+      setActiveTab("pratiquer");
+      window.setTimeout(() => resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur inconnue.");
     } finally {
@@ -631,6 +643,8 @@ export default function Home() {
     setSaveMessage("");
     setDataMessage("");
     setError("");
+    setActiveTab("pratiquer");
+    window.setTimeout(() => resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
   }
 
   function addSchoolDictation() {
@@ -829,7 +843,7 @@ export default function Home() {
           <div className="max-w-3xl">
             <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-cyan-300/30 bg-cyan-300/10 px-4 py-2 text-sm text-cyan-100">
               <School size={17} />
-              Atelier de dictées personnalisées — CM1
+              Atelier de dictées personnalisées — {input.level}
             </div>
 
             <h1 className="text-4xl font-bold tracking-tight md:text-6xl">
@@ -843,95 +857,170 @@ export default function Home() {
           </div>
 
           <div className="grid gap-3 rounded-3xl border border-white/10 bg-white/10 p-5 shadow-2xl backdrop-blur md:min-w-[320px]">
-            <Stat icon={<Target />} label="Niveau" value="CM1" />
-            <Stat icon={<Brain />} label="Erreurs suivies" value={`${totalObservedErrors}`} />
-            <Stat icon={<LibraryBig />} label="Dictées école" value={`${schoolDictations.length}`} />
+            <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-slate-950/40 p-4">
+              <div className="rounded-xl bg-cyan-300/15 p-3 text-cyan-200">
+                <Target size={20} />
+              </div>
+              <div className="flex-1">
+                <p className="text-xs uppercase tracking-wide text-slate-400">Niveau</p>
+                <select
+                  value={input.level}
+                  onChange={(e) =>
+                    setInput((current) => ({
+                      ...current,
+                      level: e.target.value as "CE1" | "CE2" | "CM1" | "CM2",
+                    }))
+                  }
+                  className="mt-0.5 w-full bg-transparent font-semibold text-slate-100 focus:outline-none"
+                >
+                  {levelOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value} className="bg-slate-900">
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            {schoolDictations.length > 0 ? (
+              <Stat icon={<LibraryBig />} label="Dictées école" value={`${schoolDictations.length}`} />
+            ) : (
+              <StatEmpty icon={<LibraryBig />} label="Bibliothèque" hint="Ajoute une dictée de l'école" />
+            )}
+            {totalObservedErrors > 0 ? (
+              <Stat icon={<Brain />} label="Erreurs suivies" value={`${totalObservedErrors}`} />
+            ) : (
+              <StatEmpty icon={<Brain />} label="Suivi des erreurs" hint="Pratique pour commencer le suivi" />
+            )}
           </div>
         </div>
       </section>
 
-      <section className="mx-auto grid max-w-7xl gap-6 px-5 py-8 md:px-8 lg:grid-cols-[1.05fr_0.95fr]">
-        <div className="no-print space-y-6">
-          <DataPanel
-            onExport={exportData}
-            onImportClick={() => importInputRef.current?.click()}
-            dataMessage={dataMessage}
-          />
+      <div className="no-print mx-auto flex max-w-7xl items-center gap-3 px-5 pt-6 md:px-8">
+        {!studentMode && (
+          <div className="flex-1">
+            <TabBar activeTab={activeTab} onTabChange={setActiveTab} hasResult={!!result} />
+          </div>
+        )}
+        {studentMode && (
+          <div className="flex-1 rounded-2xl border border-purple-400/30 bg-purple-400/10 px-4 py-2.5 text-sm font-semibold text-purple-200">
+            Mode élève actif — interface simplifiée
+          </div>
+        )}
+        <button
+          type="button"
+          onClick={() => {
+            const next = !studentMode;
+            setStudentMode(next);
+            if (next) setActiveTab("pratiquer");
+          }}
+          className={`shrink-0 rounded-2xl border px-4 py-2.5 text-sm font-semibold transition ${
+            studentMode
+              ? "border-purple-400/40 bg-purple-400/15 text-purple-200 hover:bg-purple-400/25"
+              : "border-white/10 bg-white/[0.06] text-slate-300 hover:bg-white/[0.1]"
+          }`}
+        >
+          {studentMode ? "← Mode enseignant" : "Mode élève"}
+        </button>
+      </div>
 
-          <input
-            ref={importInputRef}
-            type="file"
-            accept="application/json"
-            className="hidden"
-            onChange={importData}
-          />
+      <section className="mx-auto max-w-7xl px-5 py-6 md:px-8">
+        <input
+          ref={importInputRef}
+          type="file"
+          accept="application/json"
+          className="hidden"
+          onChange={importData}
+        />
 
-          <GenerationPanel
-            input={input}
-            setInput={setInput}
-            requiredWordsText={requiredWordsText}
-            setRequiredWordsText={setRequiredWordsText}
-            errorsText={errorsText}
-            setErrorsText={setErrorsText}
-            canGenerate={canGenerate}
-            isLoading={isLoading}
-            error={error}
-            onGenerate={generateDictation}
-            onToggleGrammar={toggleGrammar}
-          />
-
-          <SchoolLibraryPanel
-            schoolForm={schoolForm}
-            setSchoolForm={setSchoolForm}
-            schoolWordsText={schoolWordsText}
-            setSchoolWordsText={setSchoolWordsText}
-            schoolDictations={schoolDictations}
-            onToggleSchoolGrammar={toggleSchoolGrammar}
-            onAdd={addSchoolDictation}
-            onLoad={loadSchoolDictation}
-            onVariant={generateVariantFromSchool}
-            onReview={generateReviewFromSchool}
-            onDelete={deleteSchoolDictation}
-            isLoading={isLoading}
-          />
-
-          <ErrorTrackingPanel
-            stats={errorStats}
-            total={totalObservedErrors}
-            prioritySummary={prioritySummary}
-            isLoading={isLoading}
-            onGenerateCategoryReview={generateCategoryReview}
-            onGeneratePriorityReview={generatePriorityReview}
-          />
-
-          <HistoryPanel
-            history={history}
-            onLoad={loadFromHistory}
-            onClear={clearHistory}
-          />
-        </div>
-
-        <div className="space-y-6">
-          {!result ? (
-            <EmptyResult />
-          ) : (
-            <ResultPanel
-              result={result}
-              observedErrorsText={observedErrorsText}
-              setObservedErrorsText={setObservedErrorsText}
-              onSaveObservedErrors={saveObservedErrors}
-              onGenerateReview={generateReviewDictation}
-              onRegenerate={generateDictation}
+        {activeTab === "bibliotheque" && (
+          <div className="no-print space-y-6">
+            {schoolDictations.length === 0 && history.length === 0 && (
+              <OnboardingGuide onGoGenerate={() => setActiveTab("generer")} />
+            )}
+            <SchoolLibraryPanel
+              schoolForm={schoolForm}
+              setSchoolForm={setSchoolForm}
+              schoolWordsText={schoolWordsText}
+              setSchoolWordsText={setSchoolWordsText}
+              schoolDictations={schoolDictations}
+              onToggleSchoolGrammar={toggleSchoolGrammar}
+              onAdd={addSchoolDictation}
+              onLoad={loadSchoolDictation}
+              onVariant={generateVariantFromSchool}
+              onReview={generateReviewFromSchool}
+              onDelete={deleteSchoolDictation}
               isLoading={isLoading}
-              onPrint={printSheet}
-              onCopy={copyDictation}
-              copied={copied}
-              saveMessage={saveMessage}
-              printMode={printMode}
-              setPrintMode={setPrintMode}
             />
-          )}
-        </div>
+          </div>
+        )}
+
+        {activeTab === "generer" && (
+          <div className="no-print">
+            <GenerationPanel
+              input={input}
+              setInput={setInput}
+              requiredWordsText={requiredWordsText}
+              setRequiredWordsText={setRequiredWordsText}
+              errorsText={errorsText}
+              setErrorsText={setErrorsText}
+              canGenerate={canGenerate}
+              isLoading={isLoading}
+              error={error}
+              onGenerate={generateDictation}
+              onToggleGrammar={toggleGrammar}
+            />
+          </div>
+        )}
+
+        {activeTab === "pratiquer" && (
+          <div ref={resultRef} className="print-sheet space-y-6">
+            {!result ? (
+              <EmptyResult onGoGenerate={studentMode ? undefined : () => setActiveTab("generer")} />
+            ) : (
+              <ResultPanel
+                result={result}
+                observedErrorsText={observedErrorsText}
+                setObservedErrorsText={setObservedErrorsText}
+                onSaveObservedErrors={saveObservedErrors}
+                onGenerateReview={generateReviewDictation}
+                onRegenerate={generateDictation}
+                isLoading={isLoading}
+                onPrint={printSheet}
+                onCopy={copyDictation}
+                copied={copied}
+                saveMessage={saveMessage}
+                printMode={printMode}
+                setPrintMode={setPrintMode}
+                studentMode={studentMode}
+              />
+            )}
+          </div>
+        )}
+
+        {activeTab === "suivi" && (
+          <div className="no-print space-y-6">
+            <ErrorTrackingPanel
+              stats={errorStats}
+              total={totalObservedErrors}
+              prioritySummary={prioritySummary}
+              isLoading={isLoading}
+              onGenerateCategoryReview={generateCategoryReview}
+              onGeneratePriorityReview={generatePriorityReview}
+            />
+
+            <HistoryPanel
+              history={history}
+              onLoad={loadFromHistory}
+              onClear={clearHistory}
+            />
+
+            <DataPanel
+              onExport={exportData}
+              onImportClick={() => importInputRef.current?.click()}
+              dataMessage={dataMessage}
+            />
+          </div>
+        )}
       </section>
     </main>
   );
@@ -1048,11 +1137,15 @@ function GenerationPanel({
               className="input min-h-32 resize-y"
               separator=" "
               helpText="Tu peux coller le texte ou le dicter au micro."
+              dictLabel="Dicter le texte source"
             />
           </Field>
         )}
 
-        <Field label="Mots à apprendre ou mots imposés">
+        <Field
+          label="Mots imposés"
+          description="Mots que tu veux voir apparaître dans la dictée générée."
+        >
           <SpeechTextarea
             value={requiredWordsText}
             onChange={setRequiredWordsText}
@@ -1060,6 +1153,7 @@ function GenerationPanel({
             className="input min-h-24 resize-y"
             separator=", "
             helpText="Dicte les mots un par un. Ils seront ajoutés comme une liste."
+            dictLabel="Dicter les mots imposés"
           />
         </Field>
 
@@ -1072,7 +1166,7 @@ function GenerationPanel({
           />
         </Field>
 
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-3">
           <SelectField
             label="Temps"
             value={input.tense}
@@ -1116,7 +1210,7 @@ function GenerationPanel({
         </Field>
 
         <Field label="Notions à travailler">
-          <GrammarButtons
+          <NotionsCheckboxes
             selected={input.grammarFocus}
             onToggle={onToggleGrammar}
           />
@@ -1238,10 +1332,14 @@ function SchoolLibraryPanel({
             className="input min-h-28 resize-y"
             separator=" "
             helpText="Tu peux enregistrer la dictée source en la dictant au micro."
+            dictLabel="Dicter le texte source"
           />
         </Field>
 
-        <Field label="Mots à apprendre">
+        <Field
+          label="Mots à apprendre"
+          description="Mots de la leçon que l'élève doit mémoriser (liste de vocabulaire)."
+        >
           <SpeechTextarea
             value={schoolWordsText}
             onChange={setSchoolWordsText}
@@ -1249,6 +1347,7 @@ function SchoolLibraryPanel({
             className="input min-h-20 resize-y"
             separator=", "
             helpText="Dicte les mots à apprendre. Ils seront ajoutés sous forme de liste."
+            dictLabel="Dicter les mots à apprendre"
           />
         </Field>
 
@@ -1279,7 +1378,7 @@ function SchoolLibraryPanel({
         </div>
 
         <Field label="Notions associées">
-          <GrammarButtons
+          <NotionsCheckboxes
             selected={schoolForm.grammarFocus}
             onToggle={onToggleSchoolGrammar}
           />
@@ -1424,36 +1523,46 @@ function ErrorTrackingPanel({
           </div>
 
           <div className="space-y-3">
-            {stats.map((stat) => (
-              <div
-                key={stat.category}
-                className="rounded-2xl border border-white/10 bg-white/[0.04] p-4"
-              >
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <strong className="text-slate-100">{stat.label}</strong>
-                      <span className="rounded-full bg-amber-300/15 px-3 py-1 text-xs text-amber-100">
-                        {stat.count} fois
+            {stats.map((stat) => {
+              const maxCount = stats[0].count;
+              const pct = Math.round((stat.count / maxCount) * 100);
+              return (
+                <div
+                  key={stat.category}
+                  className="rounded-2xl border border-white/10 bg-white/[0.04] p-4"
+                >
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <strong className="text-sm text-slate-100">{stat.label}</strong>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <span className="rounded-full bg-amber-300/15 px-2 py-0.5 text-xs text-amber-100">
+                        {stat.count}×
                       </span>
+                      <button
+                        type="button"
+                        onClick={() => onGenerateCategoryReview(stat)}
+                        disabled={isLoading}
+                        className="rounded-lg bg-amber-300 px-3 py-1 text-xs font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        Réviser
+                      </button>
                     </div>
-
-                    <p className="mt-2 text-sm text-slate-400">
-                      {stat.examples.slice(0, 2).join(" · ")}
-                    </p>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => onGenerateCategoryReview(stat)}
-                    disabled={isLoading}
-                    className="rounded-xl bg-amber-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    Réviser
-                  </button>
+                  <div className="mb-1.5 h-2 overflow-hidden rounded-full bg-white/10">
+                    <div
+                      className="h-full rounded-full bg-amber-300 transition-all duration-500"
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+
+                  {stat.examples.length > 0 && (
+                    <p className="text-xs text-slate-500">
+                      {stat.examples.slice(0, 2).join(" · ")}
+                    </p>
+                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -1552,6 +1661,7 @@ function ResultPanel({
   saveMessage,
   printMode,
   setPrintMode,
+  studentMode = false,
 }: {
   result: DictationResult;
   observedErrorsText: string;
@@ -1566,6 +1676,7 @@ function ResultPanel({
   saveMessage: string;
   printMode: PrintMode;
   setPrintMode: (value: PrintMode) => void;
+  studentMode?: boolean;
 }) {
   return (
     <div className="print-sheet space-y-6" data-print-mode={printMode}>
@@ -1574,9 +1685,10 @@ function ResultPanel({
           <CardHeader
             icon={<ClipboardList />}
             title={result.title}
-            description="Dictée prête à lire, version à trous, correction et fiche parent."
+            description={studentMode ? "Écoute bien et écris la dictée." : "Dictée prête à lire, version à trous, correction et fiche parent."}
           />
 
+          {!studentMode && (
           <div className="no-print flex flex-wrap gap-2">
             <select
               value={printMode}
@@ -1619,39 +1731,57 @@ function ResultPanel({
               {isLoading ? <Loader2 className="animate-spin" size={18} /> : <RefreshCcw size={18} />}
             </button>
           </div>
+          )}
         </div>
 
-        <section className="print-parent print-complete">
-          <Section title="Dictée à lire" icon={<BookOpen size={18} />}>
-            <p className="print-block whitespace-pre-line rounded-2xl bg-slate-950/70 p-5 text-lg leading-9 text-slate-50">
-              {result.dictation}
+        {studentMode ? (
+          <Section title="Écris la dictée ici" icon={<PencilLine size={18} />}>
+            <textarea
+              value={observedErrorsText}
+              onChange={(e) => setObservedErrorsText(e.target.value)}
+              placeholder="Écris la dictée ici au fur et à mesure que tu l’entends..."
+              className="input min-h-48 resize-y text-lg leading-8"
+            />
+            <p className="mt-2 text-xs text-slate-500">
+              Demande à un adulte de te lire le texte de la dictée.
             </p>
           </Section>
-        </section>
+        ) : (
+          <>
+            <section className="print-parent print-complete">
+              <Section title="Dictée à lire" icon={<BookOpen size={18} />}>
+                <p className="print-block whitespace-pre-line rounded-2xl bg-slate-950/70 p-5 text-lg leading-9 text-slate-50">
+                  {result.dictation}
+                </p>
+              </Section>
+            </section>
 
-        <section className="print-student print-complete">
-          <Section title="Version élève à trous" icon={<FileText size={18} />}>
-            <p className="print-block whitespace-pre-line rounded-2xl bg-indigo-400/10 p-5 text-lg leading-9 text-indigo-50">
-              {result.studentExercise || "Aucune version à trous générée."}
-            </p>
-          </Section>
-        </section>
+            <section className="print-student print-complete">
+              <Section title="Version élève à trous" icon={<FileText size={18} />}>
+                <p className="print-block whitespace-pre-line rounded-2xl bg-indigo-400/10 p-5 text-lg leading-9 text-indigo-50">
+                  {result.studentExercise || "Aucune version à trous générée."}
+                </p>
+              </Section>
+            </section>
 
-        <section className="print-parent print-complete">
-          <Section title="Correction" icon={<CheckCircle2 size={18} />}>
-            <p className="print-block whitespace-pre-line rounded-2xl bg-emerald-400/10 p-5 leading-8 text-emerald-50">
-              {result.correction}
-            </p>
-          </Section>
+            <section className="print-parent print-complete">
+              <Section title="Correction" icon={<CheckCircle2 size={18} />}>
+                <p className="print-block whitespace-pre-line rounded-2xl bg-emerald-400/10 p-5 leading-8 text-emerald-50">
+                  {result.correction}
+                </p>
+              </Section>
 
-          <Section title="Fiche parent" icon={<Brain size={18} />}>
-            <p className="print-block whitespace-pre-line rounded-2xl bg-cyan-300/10 p-5 leading-8 text-cyan-50">
-              {result.parentSheet || "Aucune fiche parent générée."}
-            </p>
-          </Section>
-        </section>
+              <Section title="Fiche parent" icon={<Brain size={18} />}>
+                <p className="print-block whitespace-pre-line rounded-2xl bg-cyan-300/10 p-5 leading-8 text-cyan-50">
+                  {result.parentSheet || "Aucune fiche parent générée."}
+                </p>
+              </Section>
+            </section>
+          </>
+        )}
       </Card>
 
+      {!studentMode && (
       <Card>
         <div className="grid gap-5 print-parent print-complete">
           <InfoBlock title="Mots utilisés" items={result.usedWords} />
@@ -1660,21 +1790,24 @@ function ResultPanel({
           <InfoBlock title="Points de vigilance" items={result.vigilancePoints} />
         </div>
       </Card>
+      )}
 
       <Card>
         <div className="no-print">
           <CardHeader
             icon={<RotateCcw />}
-            title="Après correction"
-            description="Note les erreurs réellement faites, puis génère une dictée de révision ciblée."
+            title={studentMode ? "Terminer la dictée" : "Après correction"}
+            description={studentMode ? "Enregistre tes erreurs pour les réviser plus tard." : "Note les erreurs réellement faites, puis génère une dictée de révision ciblée."}
           />
 
+          {!studentMode && (
           <textarea
             value={observedErrorsText}
             onChange={(e) => setObservedErrorsText(e.target.value)}
             placeholder="Exemple : élèves écrit élève ; chanteront écrit chanterons ; oubli de l’apostrophe dans l’école..."
             className="input min-h-28 resize-y"
           />
+          )}
 
           {saveMessage && (
             <div className="mt-3 rounded-2xl border border-emerald-300/20 bg-emerald-300/10 p-3 text-sm text-emerald-100">
@@ -1682,35 +1815,46 @@ function ResultPanel({
             </div>
           )}
 
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          {studentMode ? (
             <button
               type="button"
               onClick={onSaveObservedErrors}
-              className="flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 font-semibold text-slate-100 transition hover:bg-white/[0.1]"
+              className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-cyan-300 px-4 py-3 font-semibold text-slate-950 transition hover:bg-cyan-200"
             >
               <Save size={18} />
-              Enregistrer les erreurs
+              Enregistrer la dictée
             </button>
+          ) : (
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={onSaveObservedErrors}
+                className="flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 font-semibold text-slate-100 transition hover:bg-white/[0.1]"
+              >
+                <Save size={18} />
+                Enregistrer les erreurs
+              </button>
 
-            <button
-              type="button"
-              onClick={onGenerateReview}
-              disabled={isLoading}
-              className="flex items-center justify-center gap-2 rounded-2xl bg-amber-300 px-4 py-3 font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="animate-spin" size={18} />
-                  Génération...
-                </>
-              ) : (
-                <>
-                  <RotateCcw size={18} />
-                  Générer une révision
-                </>
-              )}
-            </button>
-          </div>
+              <button
+                type="button"
+                onClick={onGenerateReview}
+                disabled={isLoading}
+                className="flex items-center justify-center gap-2 rounded-2xl bg-amber-300 px-4 py-3 font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="animate-spin" size={18} />
+                    Génération...
+                  </>
+                ) : (
+                  <>
+                    <RotateCcw size={18} />
+                    Générer une révision
+                  </>
+                )}
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="print-only rounded-2xl border border-slate-300 p-4">
@@ -1725,7 +1869,7 @@ function ResultPanel({
   );
 }
 
-function GrammarButtons({
+function NotionsCheckboxes({
   selected,
   onToggle,
 }: {
@@ -1833,6 +1977,26 @@ function Stat({
   );
 }
 
+function StatEmpty({
+  icon,
+  label,
+  hint,
+}: {
+  icon: ReactNode;
+  label: string;
+  hint: string;
+}) {
+  return (
+    <div className="flex items-center gap-3 rounded-2xl border border-dashed border-white/10 bg-slate-950/20 p-4">
+      <div className="rounded-xl bg-white/5 p-3 text-slate-500">{icon}</div>
+      <div>
+        <p className="text-xs uppercase tracking-wide text-slate-500">{label}</p>
+        <p className="text-sm text-slate-500">{hint}</p>
+      </div>
+    </div>
+  );
+}
+
 function Card({ children }: { children: ReactNode }) {
   return (
     <div className="rounded-3xl border border-white/10 bg-white/[0.06] p-5 shadow-2xl shadow-black/20 backdrop-blur">
@@ -1899,10 +2063,21 @@ function ModeButton({
   );
 }
 
-function Field({ label, children }: { label: string; children: ReactNode }) {
+function Field({
+  label,
+  description,
+  children,
+}: {
+  label: string;
+  description?: string;
+  children: ReactNode;
+}) {
   return (
     <div className="block">
-      <div className="mb-2 block text-sm font-medium text-slate-200">{label}</div>
+      <div className="mb-1 block text-sm font-medium text-slate-200">{label}</div>
+      {description && (
+        <p className="mb-2 text-xs leading-5 text-slate-400">{description}</p>
+      )}
       {children}
     </div>
   );
@@ -1939,7 +2114,115 @@ function SelectField({
   );
 }
 
-function EmptyResult() {
+function OnboardingGuide({ onGoGenerate }: { onGoGenerate: () => void }) {
+  const steps = [
+    {
+      number: "1",
+      title: "Ajoute une dictée",
+      description: "Enregistre une dictée de l'école dans la bibliothèque ci-dessous (texte, mots à apprendre, notions).",
+      color: "cyan",
+    },
+    {
+      number: "2",
+      title: "Génère une variante",
+      description: "Va dans l'onglet Générer pour créer une nouvelle dictée personnalisée ou une révision ciblée.",
+      color: "purple",
+    },
+    {
+      number: "3",
+      title: "Pratique et suis les progrès",
+      description: "Passe la dictée dans l'onglet Pratiquer, note les erreurs et consulte ton suivi dans Suivi.",
+      color: "amber",
+    },
+  ];
+
+  return (
+    <div className="rounded-3xl border border-cyan-300/20 bg-gradient-to-br from-cyan-300/10 to-purple-400/10 p-6">
+      <div className="mb-6 text-center">
+        <div className="mb-3 inline-flex rounded-2xl bg-cyan-300/15 p-3 text-cyan-200">
+          <School size={28} />
+        </div>
+        <h2 className="text-xl font-bold text-slate-50">Bienvenue dans l'Atelier de dictées</h2>
+        <p className="mt-2 text-sm leading-6 text-slate-400">
+          Suis ces 3 étapes pour commencer.
+        </p>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-3">
+        {steps.map((step) => (
+          <div
+            key={step.number}
+            className="rounded-2xl border border-white/10 bg-slate-950/40 p-4"
+          >
+            <div className="mb-3 inline-flex h-8 w-8 items-center justify-center rounded-full bg-cyan-300 text-sm font-bold text-slate-950">
+              {step.number}
+            </div>
+            <h3 className="mb-1 font-semibold text-slate-100">{step.title}</h3>
+            <p className="text-sm leading-5 text-slate-400">{step.description}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-5 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+        <p className="text-sm text-slate-400">Commence par ajouter une dictée ci-dessous, ou</p>
+        <button
+          type="button"
+          onClick={onGoGenerate}
+          className="flex items-center gap-2 rounded-xl bg-cyan-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200"
+        >
+          <Wand2 size={16} />
+          Générer directement
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function TabBar({
+  activeTab,
+  onTabChange,
+  hasResult,
+}: {
+  activeTab: "bibliotheque" | "generer" | "pratiquer" | "suivi";
+  onTabChange: (tab: "bibliotheque" | "generer" | "pratiquer" | "suivi") => void;
+  hasResult: boolean;
+}) {
+  const tabs: { id: "bibliotheque" | "generer" | "pratiquer" | "suivi"; label: string; icon: ReactNode }[] = [
+    { id: "bibliotheque", label: "Bibliothèque", icon: <LibraryBig size={17} /> },
+    { id: "generer", label: "Générer", icon: <Wand2 size={17} /> },
+    { id: "pratiquer", label: "Pratiquer", icon: <PencilLine size={17} /> },
+    { id: "suivi", label: "Suivi", icon: <Brain size={17} /> },
+  ];
+
+  return (
+    <div className="flex gap-1 rounded-2xl border border-white/10 bg-white/[0.04] p-1">
+      {tabs.map((tab) => {
+        const isActive = activeTab === tab.id;
+        const showDot = tab.id === "pratiquer" && hasResult && !isActive;
+        return (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => onTabChange(tab.id)}
+            className={`relative flex flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${
+              isActive
+                ? "bg-cyan-300 text-slate-950 shadow"
+                : "text-slate-400 hover:bg-white/[0.06] hover:text-slate-200"
+            }`}
+          >
+            {tab.icon}
+            <span className="hidden sm:inline">{tab.label}</span>
+            {showDot && (
+              <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-cyan-300" />
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function EmptyResult({ onGoGenerate }: { onGoGenerate?: () => void }) {
   return (
     <Card>
       <div className="flex min-h-[520px] flex-col items-center justify-center text-center">
@@ -1949,8 +2232,18 @@ function EmptyResult() {
         <h2 className="text-2xl font-bold">Aucune dictée générée</h2>
         <p className="mt-3 max-w-md text-sm leading-6 text-slate-400">
           Renseigne une dictée source, des mots imposés ou charge une dictée de
-          la bibliothèque.
+          la bibliothèque pour générer une dictée.
         </p>
+        {onGoGenerate && (
+          <button
+            type="button"
+            onClick={onGoGenerate}
+            className="mt-6 flex items-center gap-2 rounded-2xl bg-cyan-300 px-5 py-3 font-semibold text-slate-950 transition hover:bg-cyan-200"
+          >
+            <Wand2 size={18} />
+            Générer une dictée
+          </button>
+        )}
       </div>
     </Card>
   );

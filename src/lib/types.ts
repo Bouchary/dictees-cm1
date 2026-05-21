@@ -38,7 +38,7 @@ export type PrintMode = "complete" | "student" | "parent";
 
 export type GenerateDictationInput = {
   mode: DictationMode;
-  level: "CM1";
+  level: "CE1" | "CE2" | "CM1" | "CM2";
   sourceDictation?: string;
   requiredWords: string[];
   errorsToReview?: string[];

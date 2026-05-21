@@ -2,16 +2,16 @@ import { GenerateDictationInput } from "./types";
 
 export function buildDictationPrompt(input: GenerateDictationInput) {
   return `
-Tu es un assistant pédagogique spécialisé dans les dictées pour enfants de CM1 en France.
+Tu es un assistant pédagogique spécialisé dans les dictées pour enfants de primaire en France.
 
 Objectif :
-Créer une dictée d'entraînement adaptée à une élève de CM1.
+Créer une dictée d'entraînement adaptée à un élève de ${input.level}.
 
 Contraintes strictes :
-- Niveau : CM1.
+- Niveau : ${input.level}.
 - Langue : français de France.
-- Ne pas produire une dictée trop adulte.
-- Ne pas utiliser de vocabulaire inutilement complexe.
+- Ne pas produire une dictée trop adulte ou trop complexe pour le niveau ${input.level}.
+- Adapter le vocabulaire, la longueur des phrases et les notions grammaticales au niveau ${input.level}.
 - Respecter les mots imposés autant que possible.
 - Si une contrainte est contradictoire, le signaler dans les points de vigilance.
 - Ne pas inventer de règle grammaticale.
@@ -19,7 +19,7 @@ Contraintes strictes :
 - La dictée doit être naturelle, lisible à voix haute par un parent.
 - La correction doit être claire, mais pas trop longue.
 - La dictée doit permettre de retravailler les notions demandées.
-- La version à trous doit être exploitable par une enfant de CM1.
+- La version à trous doit être exploitable par un enfant de ${input.level}.
 - La version à trous doit masquer en priorité les mots imposés, les verbes conjugués, les accords ou les mots difficiles.
 - Ne masque pas trop de mots : la phrase doit rester compréhensible.
 - La fiche parent doit aider l'adulte à préparer la séance sans devenir un cours trop long.
