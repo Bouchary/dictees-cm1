@@ -1,6 +1,6 @@
 "use client";
 
-import { Pause, Play, RotateCcw, Volume2 } from "lucide-react";
+import { Eye, EyeOff, Pause, Play, RotateCcw, Volume2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 type Speed = "slow" | "normal";
@@ -12,12 +12,19 @@ function splitSentences(text: string): string[] {
     .filter(Boolean);
 }
 
-export function DictationPlayer({ dictation }: { dictation: string }) {
+export function DictationPlayer({
+  dictation,
+  hideTextByDefault = false,
+}: {
+  dictation: string;
+  hideTextByDefault?: boolean;
+}) {
   const sentences = splitSentences(dictation);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentIndex, setCurrentIndex] = useState<number | null>(null);
   const [speed, setSpeed] = useState<Speed>("normal");
   const [supported, setSupported] = useState(true);
+  const [textHidden, setTextHidden] = useState(hideTextByDefault);
   const indexRef = useRef<number>(0);
   const cancelledRef = useRef(false);
 
@@ -26,6 +33,10 @@ export function DictationPlayer({ dictation }: { dictation: string }) {
       setSupported(false);
     }
   }, []);
+
+  useEffect(() => {
+    setTextHidden(hideTextByDefault);
+  }, [hideTextByDefault]);
 
   const getVoice = useCallback((): SpeechSynthesisVoice | null => {
     const voices = window.speechSynthesis.getVoices();
@@ -106,12 +117,22 @@ export function DictationPlayer({ dictation }: { dictation: string }) {
 
   if (!supported) return null;
 
+  const progressLabel =
+    currentIndex !== null
+      ? `Phrase ${currentIndex + 1} / ${sentences.length}`
+      : sentences.length > 0
+      ? `${sentences.length} phrase${sentences.length > 1 ? "s" : ""}`
+      : "";
+
   return (
     <div className="rounded-2xl border border-purple-400/30 bg-purple-400/10 p-4 space-y-4">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2 text-purple-200">
           <Volume2 size={18} />
           <span className="text-sm font-semibold">Lecture de la dictée</span>
+          {progressLabel && (
+            <span className="text-xs text-purple-300/70">{progressLabel}</span>
+          )}
         </div>
 
         <div className="flex items-center gap-2">
@@ -125,6 +146,15 @@ export function DictationPlayer({ dictation }: { dictation: string }) {
             }`}
           >
             {speed === "slow" ? "Vitesse : lente" : "Vitesse : normale"}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setTextHidden((v) => !v)}
+            className="rounded-xl border border-white/10 bg-white/[0.06] p-2 text-slate-300 transition hover:bg-white/10"
+            title={textHidden ? "Afficher le texte" : "Cacher le texte"}
+          >
+            {textHidden ? <Eye size={16} /> : <EyeOff size={16} />}
           </button>
 
           <button
@@ -152,7 +182,7 @@ export function DictationPlayer({ dictation }: { dictation: string }) {
         </div>
       </div>
 
-      {sentences.length > 0 && (
+      {sentences.length > 0 && !textHidden && (
         <div className="space-y-1.5">
           {sentences.map((sentence, i) => (
             <p
@@ -166,6 +196,26 @@ export function DictationPlayer({ dictation }: { dictation: string }) {
               {sentence}
             </p>
           ))}
+        </div>
+      )}
+
+      {sentences.length > 0 && textHidden && (
+        <div className="flex items-center gap-3 rounded-xl border border-purple-400/20 bg-purple-400/5 px-3 py-2">
+          <div className="flex gap-1">
+            {sentences.map((_, i) => (
+              <div
+                key={i}
+                className={`h-2 w-2 rounded-full transition-all duration-300 ${
+                  currentIndex === i
+                    ? "bg-purple-400 scale-125"
+                    : i < (currentIndex ?? -1)
+                    ? "bg-purple-400/50"
+                    : "bg-white/10"
+                }`}
+              />
+            ))}
+          </div>
+          <span className="text-xs text-purple-300/60">Texte masqué</span>
         </div>
       )}
     </div>

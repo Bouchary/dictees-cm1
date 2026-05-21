@@ -1841,7 +1841,7 @@ function ResultPanel({
 
         {studentMode ? (
           <>
-            <DictationPlayer dictation={result.dictation} />
+            <DictationPlayer dictation={result.dictation} hideTextByDefault={true} />
             <Section title="Écris la dictée ici" icon={<PencilLine size={18} />}>
               <textarea
                 value={observedErrorsText}
